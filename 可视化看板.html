@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>苹果公司营业总收入影响因素分析看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #8892b0;
+            font-size: 1.1rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #00d4ff, #7b2cbf);
+            border-radius: 2px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+        }
+
+        .chart-container-large {
+            height: 400px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            color: #8892b0;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        td {
+            font-size: 0.95rem;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .positive {
+            color: #00ff88;
+        }
+
+        .negative {
+            color: #ff6b6b;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-high {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .badge-medium {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .badge-low {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* 指标选择器样式 */
+        .indicator-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .indicator-btn {
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #8892b0;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .indicator-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .indicator-btn.active {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍎 苹果公司营业总收入影响因素分析看板</h1>
+        <p>基于美国宏观经济指标的相关性分析与滞后效应研究</p>
+    </div>
+
+    <div class="dashboard">
+        <!-- 苹果营收季度趋势 -->
+        <div class="card full-width">
+            <div class="card-title">苹果公司营业总收入季度趋势 (2011-2025)</div>
+            <div class="chart-container chart-container-large">
+                <canvas id="revenueTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 苹果区域营收分布 -->
+        <div class="card full-width">
+            <div class="card-title">苹果公司区域营收分布 (2025Q4)</div>
+            <div class="chart-container" style="display: flex; justify-content: center; align-items: center;">
+                <canvas id="regionalRevenueChart" style="max-width: 500px;"></canvas>
+            </div>
+        </div>
+
+        <!-- 营收与指标对比（可交互选择） -->
+        <div class="card full-width">
+            <div class="card-title">营收与各指标对比趋势</div>
+            <div class="indicator-selector" id="indicatorSelector"></div>
+            <div class="chart-container chart-container-large">
+                <canvas id="indicatorCompareChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 相关系数柱状图（按正相关到负相关排列） -->
+        <div class="card full-width">
+            <div class="card-title">各指标与营业总收入的相关系数（正相关→负相关）</div>
+            <div class="chart-container">
+                <canvas id="correlationChart"></canvas>
+            </div>
+        </div>
+
+        <!-- AIC最优滞后分析 -->
+        <div class="card full-width">
+            <div class="card-title">AIC最优滞后阶数分析</div>
+            <div class="chart-container">
+                <canvas id="aicChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 相关系数表格 -->
+        <div class="card full-width">
+            <div class="card-title">详细相关系数数据</div>
+            <div class="table-container">
+                <table id="correlationTable">
+                    <thead>
+                        <tr>
+                            <th>指标名称</th>
+                            <th>相关系数</th>
+                            <th>相关强度</th>
+                            <th>最优滞后阶数</th>
+                            <th>AIC</th>
+                            <th>R²</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 完整的时间序列数据
+        const timeData = {
+            quarters: ["2011Q1","2011Q2","2011Q3","2011Q4","2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4","2015Q1","2015Q2","2015Q3","2015Q4","2016Q1","2016Q2","2016Q3","2016Q4","2017Q1","2017Q2","2017Q3","2017Q4","2018Q1","2018Q2","2018Q3","2018Q4","2019Q1","2019Q2","2019Q3","2019Q4","2020Q1","2020Q2","2020Q3","2020Q4","2021Q1","2021Q2","2021Q3","2021Q4","2022Q1","2022Q2","2022Q3","2022Q4","2023Q1","2023Q2","2023Q3","2023Q4","2024Q1","2024Q2","2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4",],
+            revenue: [2674100,2466700,2857100,2827000,4633300,3918600,3502300,3596600,5451200,4360300,3532300,3747200,5759400,4564600,3743200,4212300,7459900,5801000,4960500,5150100,7587200,5055700,4235800,4685200,7835100,5289600,4540800,5257900,8829300,6113700,5326500,6290000,8431000,5801500,5380900,6404000,9181900,5831300,5968500,6469800,11143900,8958400,8143400,8336000,12394500,9727800,8295900,9014600,11715400,9483600,8179700,8949800,11957500,9075300,8577700,9493000,12430000,9535900,9403600,10246600,],
+            indicators: {
+                "美国:M2:季调": [8971.5,9182.1,9551.5,9683.9,9853.9,10021.6,10226.1,10484.1,10583.8,10703.3,10862.0,11060.1,11232.6,11398.1,11519.1,11717.6,11920.5,12023.2,12173.9,12387.9,12649.6,12856.9,13056.7,13248.7,13452.7,13583.3,13748.9,13899.7,14003.5,14137.7,14253.8,14407.5,14550.5,14798.6,15062.4,15373.7,16025.9,18173.5,18628.8,19165.9,19852.2,20499.2,21004.6,21494.0,21749.8,21676.8,21560.6,21266.4,20917.4,20823.8,20771.8,20745.1,20943.8,21094.6,21289.0,21458.4,21657.8,21967.8,22188.6,22366.2,],
+                "美国:CPI:季调:同比": [2.6,3.5,3.8,3.1,2.6,1.7,1.9,1.8,1.5,1.7,1.1,1.5,1.6,2.1,1.7,0.7,0.0,0.2,0.0,0.6,0.9,1.1,1.5,2.1,2.4,1.6,2.2,2.1,2.3,2.8,2.3,2.0,1.9,1.7,1.7,2.3,1.5,0.7,1.4,1.3,2.7,5.3,5.4,7.2,8.6,9.0,8.2,6.4,4.9,3.1,3.7,3.3,3.5,3.0,2.4,2.9,2.4,2.7,3.0,2.7,],
+                "美国:GDP:不变价:个人消费支出:季调:折年数": [11497.12,11508.95,11543.975,11563.89,11647.297,11667.753,11691.414,11738.007,11814.326,11848.089,11896.258,12001.027,12044.203,12159.899,12280.086,12421.595,12516.902,12603.053,12691.79,12743.411,12839.618,12903.306,12993.064,13060.061,13160.475,13225.743,13315.382,13460.902,13558.373,13630.967,13693.79,13736.572,13758.331,13875.705,14033.222,14125.274,13887.048,12685.319,13813.706,14001.366,14319.617,14820.014,14943.244,15086.862,15100.85,15224.357,15295.828,15326.248,15495.754,15553.719,15671.906,15789.717,15857.704,16009.637,16165.768,16320.89,16345.793,16445.685,16585.878,16667.027,],
+                "美国:GDP:不变价:季调:折年数": [16920.6,17035.1,17031.3,17222.6,17367.0,17444.5,17469.7,17489.9,17662.4,17709.7,17860.5,18016.1,17954.0,18185.9,18406.9,18500.0,18666.6,18782.2,18857.4,18892.2,19001.7,19062.7,19197.9,19304.4,19398.3,19506.9,19660.8,19882.4,20044.1,20150.5,20276.2,20304.9,20431.6,20602.3,20843.3,20985.4,20709.2,19078.0,20558.9,20791.9,21082.1,21440.9,21617.8,21988.7,21932.7,21967.0,22125.6,22278.3,22439.6,22580.5,22841.0,23033.8,23082.1,23286.5,23478.6,23586.5,23548.2,23771.0,24026.8,24066.0,],
+                "美国:有效联邦基金利率(EFFR)": [0.47,0.28,0.25,0.22,0.31,0.46,0.43,0.48,0.43,0.35,0.25,0.26,0.22,0.28,0.27,0.3,0.33,0.37,0.41,0.48,1.08,1.12,1.19,1.35,2.1,2.85,3.46,3.61,4.34,5.21,5.77,6.66,7.21,7.19,6.57,4.93,3.78,0.18,0.28,0.27,0.24,0.21,0.27,0.24,0.36,2.31,6.57,10.96,13.55,14.97,15.78,15.99,15.99,15.99,15.79,13.95,12.99,12.99,12.88,11.69,],
+                "美国:GDP:不变价:季调:折年数:同比": [2.0377,1.7434,0.9424,1.543,2.6382,2.4033,2.5741,1.552,1.7009,1.5202,2.237,3.0086,1.651,2.6889,3.0593,2.6859,3.969,3.2789,2.4475,2.12,1.7952,1.4934,1.8057,2.1819,2.0872,2.3302,2.4112,2.9941,3.3292,3.2993,3.1301,2.125,1.9332,2.2421,2.7969,3.3514,1.3587,-7.3987,-1.3645,-0.9221,1.8006,12.3855,5.1506,5.7561,4.0347,2.4537,2.349,1.317,2.3112,2.7928,3.2334,3.3912,2.8632,3.1266,2.7915,2.3995,2.0193,2.0806,2.3349,2.0329,],
+                "美国:失业率:季调": [9.03,9.07,9.0,8.63,8.27,8.2,8.03,7.8,7.73,7.53,7.23,6.93,6.67,6.2,6.07,5.7,5.53,5.43,5.1,5.03,4.9,4.93,4.9,4.77,4.57,4.37,4.33,4.17,4.03,3.93,3.77,3.83,3.87,3.63,3.6,3.6,3.83,13.0,8.8,6.77,6.23,5.93,5.07,4.17,3.87,3.63,3.53,3.57,3.53,3.53,3.63,3.8,3.83,3.97,4.17,4.13,4.13,4.2,4.33,4.45,],
+                "美国:密歇根大学消费者信心指数": [67.5,71.5,59.4,69.9,76.2,73.2,78.3,72.9,78.6,84.1,77.5,82.5,80.0,82.5,84.6,93.6,93.0,96.1,87.2,92.6,91.0,93.5,91.2,98.2,96.9,95.0,95.1,95.9,101.4,98.2,100.1,98.3,98.4,98.2,93.2,99.3,89.1,78.1,80.4,80.7,84.9,85.5,72.8,70.6,59.4,50.0,58.6,59.8,62.0,64.2,67.8,69.7,79.4,68.2,70.1,74.0,57.0,60.7,55.1,52.9,],
+                "中间价:美元兑人民币": [6.58,6.50,6.42,6.34,6.31,6.31,6.33,6.30,6.28,6.21,6.17,6.13,6.12,6.16,6.16,6.14,6.14,6.12,6.26,6.39,6.53,6.53,6.66,6.84,6.89,6.85,6.67,6.61,6.36,6.38,6.80,6.92,6.75,6.81,6.99,7.03,6.98,7.08,6.92,6.61,6.48,6.46,6.47,6.39,6.35,6.61,6.83,7.09,6.85,7.01,7.17,7.14,7.10,7.11,7.12,7.16,7.18,7.19,7.13,7.08,],
+                "美国人均可支配收入": [40957,40802,40932,40939,41493,41698,41281,42342,40599,40837,40894,40864,41266,41708,42010,42517,43027,43080,43228,43381,43655,43490,43647,43845,44233,44647,44878,45080,45498,45846,46257,46629,47153,47065,47313,47471,47700,52416,50588,49534,55633,51350,50700,50064,48521,48200,48872,49260,50603,51042,51177,51485,51901,52088,52143,52325,52561,52738,52811,52796,],
+                "中国人均可支配收入": [5962.82,5078.67,5259.36,5508.93,6796.31,5712.23,5918.06,6138.1,7427.3,6221.8,6519.9,6786,8155,6804,7085,6800,8572,7126.95,7813.17,7682.71,9254.71,7702.29,8379.59,8279.41,9986,8335.8789,9108.5272,8965.7881,10781,8989,9829,9652,11633,9709,10597,10420,11691,9964,11166,11013,13120,11005,11821,11466,13832,11171,12479,11801,14388,11969,13071,12393,15150,12411,13622,13005,15887.2,12956.8,14147,13511,],
+                "中国:GDP:不变价:当季值": [100490.0,112089.8,117167.9,129175.6,108621.0,120674.3,126004.9,139684.4,117211.9,129822.0,136015.8,150436.9,126096.9,139762.7,145915.4,161515.0,134991.8,149632.2,156060.3,172630.8,165118.1,183371.5,192174.4,209433.4,176649.8,196116.2,205362.6,223659.8,188926.3,209673.7,219079.5,238292.3,201017.6,222389.6,232153.3,252346.2,187417.1,229396.0,243567.3,268766.9,251564.0,273519.5,285059.2,313417.0,263762.9,275704.6,296333.6,322969.4,276286.8,293711.1,311288.6,340242.9,290792.0,307369.0,325479.2,358465.4,306571.0,323458.2,341216.5,374444.5,],
+                "中国:GDP:不变价:当季同比": [10.1,9.9,9.3,8.7,8.1,7.7,7.5,8.1,7.9,7.6,7.9,7.7,7.6,7.7,7.3,7.4,7.1,7.1,7.0,6.9,6.8,6.7,6.7,6.8,7.0,7.0,6.9,6.8,6.9,6.9,6.7,6.5,6.4,6.1,6.0,5.9,-6.8,3.2,4.9,6.5,18.9,8.1,5.5,4.5,4.8,0.8,4.0,3.0,4.7,6.5,5.0,5.3,5.3,4.7,4.6,5.4,5.4,5.2,4.8,4.5,],
+                "中国:贷款基准利率:1年:前一个观测值": [6.06,6.31,6.56,6.56,6.56,6.31,6.0,6.0,6.0,6.0,6.0,6.0,6.0,6.0,6.0,5.6,5.35,4.85,4.6,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35,4.35],
+                "欧盟GDP": [2846409.0,2852567.2,2856352.0,2847840.3,2860456.4,2860017.3,2877762.9,2870298.0,2874552.0,2897931.5,2909198.7,2920753.0,2944163.2,2958283.8,2978414.5,2996904.7,3036327.2,3068450.5,3089733.4,3112273.8,3128357.5,3143525.7,3166195.4,3193158.8,3239627.2,3277629.9,3312143.2,3350473.5,3371000.4,3393652.3,3416339.9,3455240.9,3493779.2,3522698.9,3546110.9,3570426.0,3483375.1,3134251.2,3453665.8,3499281.2,3553070.7,3642991.0,3749847.5,3829408.0,3921600.5,4009563.1,4078167.3,4151151.9,4243590.0,4301558.0,4332368.0,4387733.5,4439990.0,4476034.3,4524821.4,4579700.5,4636086.2,4675960.7,4722173.2,4781441.2,],
+                "欧盟GDP增速": [3.1,2.2,1.8,0.8,-0.3,-0.7,-0.9,-1.0,-1.1,-0.2,0.3,1.0,1.8,1.4,1.6,1.7,2.1,2.3,2.2,2.3,2.0,1.7,1.8,2.0,2.5,2.9,3.2,3.2,2.5,2.3,1.8,1.5,2.1,2.0,2.0,1.5,-2.2,-13.1,-3.9,-3.5,0.3,14.7,5.3,5.8,5.6,4.2,2.9,1.8,1.2,0.4,0.1,0.4,0.6,0.8,1.1,1.5,1.7,1.7,1.7,1.4,],
+                "欧盟基准利率": [1.0,1.25,1.5,1.0,1.0,1.0,0.75,0.75,0.75,0.5,0.5,0.25,0.25,0.15,0.05,0.05,0.05,0.05,0.05,0.05,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.25,2.5,3.5,4.0,4.5,4.5,4.5,4.25,3.65,3.15,2.65,2.15,2.15,2.15]
+            }
+        };
+
+        // 相关系数数据（按正相关到负相关排序）
+        let correlationData = [
+            {指标名称: "美国:M2:季调", 与营业总收入的相关系数: 0.8629},
+            {指标名称: "美国:GDP:不变价:个人消费支出:季调:折年数", 与营业总收入的相关系数: 0.8603},
+            {指标名称: "美国:GDP:不变价:季调:折年数", 与营业总收入的相关系数: 0.8576},
+            {指标名称: "美国人均可支配收入", 与营业总收入的相关系数: 0.8488},
+            {指标名称: "中国:GDP:不变价:当季值", 与营业总收入的相关系数: 0.7768},
+            {指标名称: "美国:有效联邦基金利率(EFFR)", 与营业总收入的相关系数: 0.6256},
+            {指标名称: "中国人均可支配收入", 与营业总收入的相关系数: 0.6154}, {指标名称: "欧盟GDP", 与营业总收入的相关系数: 0.8310}, {指标名称: "欧盟GDP增速", 与营业总收入的相关系数: 0.1738}, {指标名称: "欧盟基准利率", 与营业总收入的相关系数: 0.4561},
+            {指标名称: "中间价:美元兑人民币", 与营业总收入的相关系数: 0.5419},
+            {指标名称: "美国:CPI:季调:同比", 与营业总收入的相关系数: 0.4764},
+            {指标名称: "美国:GDP:不变价:季调:折年数:同比", 与营业总收入的相关系数: 0.1974},
+            {指标名称: "中国:GDP:不变价:当季同比", 与营业总收入的相关系数: -0.3382},
+            {指标名称: "美国:密歇根大学消费者信心指数", 与营业总收入的相关系数: -0.3692},
+            {指标名称: "美国:失业率:季调", 与营业总收入的相关系数: -0.5910},
+            {指标名称: "中国:贷款基准利率:1年:前一个观测值", 与营业总收入的相关系数: -0.6656}
+        ];
+
+        // AIC分析数据
+        const aicData = [
+            // 滞后0期 - 按AIC升序
+            {指标名称: "美国:M2:季调", 最优滞后阶数: 0, 最优AIC: 1866.54, 最优R方: 0.7447},
+            {指标名称: "美国:GDP:不变价:个人消费支出:季调:折年数", 最优滞后阶数: 0, 最优AIC: 1867.61, 最优R方: 0.7401},
+            {指标名称: "美国:GDP:不变价:季调:折年数", 最优滞后阶数: 0, 最优AIC: 1868.67, 最优R方: 0.7354},
+            {指标名称: "美国人均可支配收入", 最优滞后阶数: 0, 最优AIC: 1871.96, 最优R方: 0.7205},
+            {指标名称: "中国:GDP:不变价:当季值", 最优滞后阶数: 5, 最优AIC: 1873.66, 最优R方: 0.7567},
+            {指标名称: "中国:贷款基准利率:1年:前一个观测值", 最优滞后阶数: 0, 最优AIC: 1913.33, 最优R方: 0.4431},
+            {指标名称: "中间价:美元兑人民币", 最优滞后阶数: 0, 最优AIC: 1927.59, 最优R方: 0.2937},
+            {指标名称: "美国:CPI:季调:同比", 最优滞后阶数: 0, 最优AIC: 1933.01, 最优R方: 0.2269},
+            {指标名称: "美国:GDP:不变价:季调:折年数:同比", 最优滞后阶数: 0, 最优AIC: 1946.07, 最优R方: 0.0390},
+            // 滞后1期 - 按AIC升序
+            {指标名称: "美国:有效联邦基金利率(EFFR)", 最优滞后阶数: 1, 最优AIC: 1918.49, 最优R方: 0.4129},
+            {指标名称: "美国:失业率:季调", 最优滞后阶数: 1, 最优AIC: 1922.53, 最优R方: 0.3721},
+            {指标名称: "美国:密歇根大学消费者信心指数", 最优滞后阶数: 1, 最优AIC: 1939.55, 最优R方: 0.1662},
+            // 滞后5期
+            {指标名称: "中国人均可支配收入", 最优滞后阶数: 6, 最优AIC: 1876.05, 最优R方: 0.7551}, {指标名称: "欧盟GDP", 最优滞后阶数: 3, 最优AIC: 1877.06, 最优R方: 0.7247}, {指标名称: "欧盟GDP增速", 最优滞后阶数: 0, 最优AIC: 1946.61, 最优R方: 0.0302}, {指标名称: "欧盟基准利率", 最优滞后阶数: 8, 最优AIC: 1930.12, 最优R方: 0.4358},
+            // 滞后6期
+            {指标名称: "中国:GDP:不变价:当季同比", 最优滞后阶数: 8, 最优AIC: 1932.75, 最优R方: 0.4104}
+        ];
+
+        // 指标列表
+        const indicatorList = Object.keys(timeData.indicators);
+        const indicatorShortNames = {
+            "美国:M2:季调": "美国M2",
+            "美国:CPI:季调:同比": "美国CPI",
+            "美国:GDP:不变价:个人消费支出:季调:折年数": "美国消费支出",
+            "美国:GDP:不变价:季调:折年数": "美国GDP",
+            "美国:有效联邦基金利率(EFFR)": "美联储利率",
+            "美国:GDP:不变价:季调:折年数:同比": "美国GDP增速",
+            "美国:失业率:季调": "美国失业率",
+            "美国:密歇根大学消费者信心指数": "消费者信心",
+            "中间价:美元兑人民币": "美元兑人民币",
+            "中国:GDP:不变价:当季值": "中国GDP",
+            "中国:GDP:不变价:当季同比": "中国GDP增速",
+            "中国:贷款基准利率:1年:前一个观测值": "中国利率",
+            "美国人均可支配收入": "美国人均收入",
+            "中国人均可支配收入": "中国人均收入",
+            "欧盟GDP": "欧盟GDP",
+            "欧盟GDP增速": "欧盟GDP增速",
+            "欧盟基准利率": "欧央行利率"
+        };
+
+        let selectedIndicators = ["美国:M2:季调", "中国:GDP:不变价:当季值"];
+        let indicatorChart = null;
+
+        // ===== 0. 苹果区域营收饼图 (2025Q4) =====
+        // 数据来源: 用户提供的2025Q4数据
+        // 美洲40.71%, 欧洲26.54%, 大中华区17.76%, 日本6.55%, 亚太其他8.45%
+        const totalRevenue2025Q4 = 102466; // 2025Q4总营收（百万美元）
+        const regionalData2025Q4 = {
+            '美洲': Math.round(totalRevenue2025Q4 * 0.4071),  // 41,714
+            '欧洲': Math.round(totalRevenue2025Q4 * 0.2654),  // 27,194
+            '大中华区': Math.round(totalRevenue2025Q4 * 0.1776),  // 18,198
+            '日本': Math.round(totalRevenue2025Q4 * 0.0655),  // 6,712
+            '亚太其他': Math.round(totalRevenue2025Q4 * 0.0845)   // 8,658
+        };
+
+        const regionalCtx = document.getElementById('regionalRevenueChart').getContext('2d');
+        new Chart(regionalCtx, {
+            type: 'pie',
+            data: {
+                labels: ['美洲 (北美)', '欧洲', '大中华区', '日本', '亚太其他',],
+                datasets: [{
+                    data: [
+                        regionalData2025Q4['美洲'],
+                        regionalData2025Q4['欧洲'],
+                        regionalData2025Q4['大中华区'],
+                        regionalData2025Q4['日本'],
+                        regionalData2025Q4['亚太其他']
+                    ],
+                    backgroundColor: [
+                        '#3b82f6',  // 美洲 - 蓝色
+                        '#10b981',  // 欧洲 - 绿色
+                        '#ef4444',  // 大中华区 - 红色
+                        '#f59e0b',  // 日本 - 橙色
+                        '#8b5cf6'   // 亚太其他 - 紫色
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#1e293b'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#e2e8f0',
+                            font: { size: 12 },
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = totalRevenue2025Q4;
+                                const value = context.raw;
+                                const percentage = ((value / total) * 100).toFixed(2);
+                                return context.label + ': ' + value.toLocaleString() + ' 百万美元 (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ===== 1. 苹果营收季度趋势 =====
+        const revenueCtx = document.getElementById('revenueTrendChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: timeData.quarters,
+                datasets: [{
+                    label: '营业总收入 (万元)',
+                    data: timeData.revenue,
+                    borderColor: '#00d4ff',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#fff' } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '营收: ' + context.raw.toLocaleString() + ' 万元';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#8892b0', maxRotation: 45 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: {
+                            color: '#8892b0',
+                            callback: function(value) {
+                                return (value / 10000).toFixed(1) + '万亿';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ===== 2. 营收与指标对比（可交互选择） =====
+        function createIndicatorCompareChart() {
+            const compareCtx = document.getElementById('indicatorCompareChart').getContext('2d');
+
+            // 归一化数据（使用min-max标准化）
+            function normalize(data) {
+                const min = Math.min(...data);
+                const max = Math.max(...data);
+                return data.map(v => (v - min) / (max - min) * 100);
+            }
+
+            const datasets = [{
+                label: '营业总收入',
+                data: normalize(timeData.revenue),
+                borderColor: '#00d4ff',
+                backgroundColor: 'transparent',
+                borderWidth: 3,
+                tension: 0.4,
+                pointRadius: 2,
+                yAxisID: 'y'
+            }];
+
+            const colors = ['#ff6b6b', '#7b2cbf', '#00ff88', '#ffc107', '#ff9f43'];
+            selectedIndicators.forEach((indicator, i) => {
+                datasets.push({
+                    label: indicatorShortNames[indicator] || indicator,
+                    data: normalize(timeData.indicators[indicator]),
+                    borderColor: colors[i % colors.length],
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 2,
+                    yAxisID: 'y1'
+                });
+            });
+
+            return new Chart(compareCtx, {
+                type: 'line',
+                data: { labels: timeData.quarters, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { labels: { color: '#fff' } }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#8892b0', maxRotation: 45 }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#00d4ff' },
+                            title: { display: true, text: '营收 (归一化)', color: '#00d4ff' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            grid: { display: false },
+                            ticks: { color: '#ff6b6b' },
+                            title: { display: true, text: '指标 (归一化)', color: '#ff6b6b' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 初始化图表
+        indicatorChart = createIndicatorCompareChart();
+
+        // 创建指标选择器
+        const selectorContainer = document.getElementById('indicatorSelector');
+        indicatorList.forEach((indicator, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'indicator-btn' + (selectedIndicators.includes(indicator) ? ' active' : '');
+            btn.textContent = indicatorShortNames[indicator] || indicator;
+            btn.dataset.indicator = indicator; // 保存指标名称到data属性
+
+            btn.onclick = function() {
+                const clickedIndicator = this.dataset.indicator;
+
+                if (selectedIndicators.includes(clickedIndicator)) {
+                    if (selectedIndicators.length > 1) {
+                        selectedIndicators = selectedIndicators.filter(i => i !== clickedIndicator);
+                    }
+                } else {
+                    if (selectedIndicators.length < 3) {
+                        selectedIndicators.push(clickedIndicator);
+                    } else {
+                        selectedIndicators.shift();
+                        selectedIndicators.push(clickedIndicator);
+                    }
+                }
+
+                // 更新按钮状态
+                selectorContainer.querySelectorAll('.indicator-btn').forEach(b => {
+                    const ind = b.dataset.indicator;
+                    if (selectedIndicators.includes(ind)) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+
+                // 重新渲染图表
+                indicatorChart.destroy();
+                indicatorChart = createIndicatorCompareChart();
+            };
+
+            selectorContainer.appendChild(btn);
+        });
+
+        // ===== 3. 相关系数柱状图（正相关到负相关） =====
+        const corrCtx = document.getElementById('correlationChart').getContext('2d');
+        new Chart(corrCtx, {
+            type: 'bar',
+            data: {
+                labels: correlationData.map(d => indicatorShortNames[d.指标名称] || d.指标名称.split(':').slice(0,2).join(':')),
+                datasets: [{
+                    label: '相关系数',
+                    data: correlationData.map(d => d.与营业总收入的相关系数),
+                    backgroundColor: correlationData.map(d =>
+                        d.与营业总收入的相关系数 >= 0 ?
+                        'rgba(0, 212, 255, 0.7)' : 'rgba(255, 107, 107, 0.7)'
+                    ),
+                    borderColor: correlationData.map(d =>
+                        d.与营业总收入的相关系数 >= 0 ?
+                        'rgba(0, 212, 255, 1)' : 'rgba(255, 107, 107, 1)'
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#8892b0' },
+                        min: -1,
+                        max: 1
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#fff', font: { size: 12 } }
+                    }
+                }
+            }
+        });
+
+        // ===== 4. AIC最优滞后图 =====
+        const aicCtx = document.getElementById('aicChart').getContext('2d');
+        new Chart(aicCtx, {
+            type: 'bar',
+            data: {
+                labels: aicData.map(d => indicatorShortNames[d.指标名称] || d.指标名称.split(':').slice(0, 2).join(':')),
+                datasets: [{
+                    label: '最优滞后阶数',
+                    data: aicData.map(d => d.最优滞后阶数),
+                    backgroundColor: 'rgba(123, 44, 191, 0.7)',
+                    borderColor: 'rgba(123, 44, 191, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#8892b0' },
+                        title: { display: true, text: '滞后阶数 (季度)', color: '#8892b0' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#fff', font: { size: 12 } }
+                    }
+                }
+            }
+        });
+
+        // ===== 5. 填充表格 =====
+        const tableBody = document.querySelector('#correlationTable tbody');
+        correlationData.forEach((corr) => {
+            const aic = aicData.find(a => a.指标名称 === corr.指标名称);
+            const corrVal = corr.与营业总收入的相关系数;
+            const absCorr = Math.abs(corrVal);
+
+            let strength, badgeClass;
+            if (absCorr >= 0.7) {
+                strength = '强相关';
+                badgeClass = 'badge-high';
+            } else if (absCorr >= 0.4) {
+                strength = '中等相关';
+                badgeClass = 'badge-medium';
+            } else {
+                strength = '弱相关';
+                badgeClass = 'badge-low';
+            }
+
+            const row = document.createElement('tr');
+            const shortName = indicatorShortNames[corr.指标名称] || corr.指标名称.split(':').slice(0,2).join(':');
+            row.innerHTML = `
+                <td>${shortName}</td>
+                <td class="${corrVal >= 0 ? 'positive' : 'negative'}">${corrVal.toFixed(4)}</td>
+                <td><span class="badge ${badgeClass}">${strength}</span></td>
+                <td>${aic ? aic.最优滞后阶数 : '-'}</td>
+                <td>${aic ? aic.最优AIC.toFixed(2) : '-'}</td>
+                <td>${aic ? aic.最优R方.toFixed(4) : '-'}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    </script>
+</body>
+</html>
